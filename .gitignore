@@ -1,0 +1,20 @@
+# Ignore common Python files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Ignore virtual environment folders
+env/
+venv/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore archive folder
+archive/
+
+# Ignore logs and temporary files
+*.log
+*.tmp
