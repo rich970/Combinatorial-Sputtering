@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#%%
+
 """
 Created on Thu Apr 23 20:21:44 2020
 
@@ -48,28 +50,43 @@ def rate_k(Px,Py,gamma, Phi_kF):
         depostions rate for magnetron k at the Cartesian point on the wafer (Px,Py).
 
     """
-    st_d = 120#mm substrate - target distance 
-    n = 2    #directionality constant. Higher n means more tightly focused flux beam
+    st_d = 120 # mm substrate - target distance 
+    n = 2  # directionality constant. Higher n means more tightly focused flux beam
     
-    alpha = np.deg2rad(20) #angle between r_kF and focus normal
-    gamma = np.deg2rad(gamma) #magnetron position on clock face. 90 deg = below substrate.
+    alpha = np.deg2rad(20) # angle between r_kF and focus normal
+    gamma = np.deg2rad(gamma) # magnetron position on clock face. 90 deg = below substrate.
+
+    Pz = np.zeros_like(Px)  # z-coordinate of points on the wafer (zero everywhere for the surface rate)
+
+    # vectors from focus to point Pk on wafer in Cartesian coordinates   
     r_FP = np.array([Px,
                      Py,
-                     0])
+                     Pz]) 
 
-    r_kF = (st_d) * np.array([np.sin(alpha)*np.cos(gamma), 
-                              np.sin(alpha)*np.sin(gamma),
-                              np.cos(alpha)])
-    
-    r_kFmag = np.linalg.norm(r_kF)
-    
-    r_kP = r_kF + r_FP
-    r_kPmag = np.linalg.norm(r_kP)
+    # vector from magnetron k to focus in Cartesian coordinates
+    r_kF = (st_d) * np.array([np.sin(alpha)*np.cos(gamma)*np.ones_like(Px), 
+                              np.sin(alpha)*np.sin(gamma)*np.ones_like(Py),
+                              np.cos(alpha)*np.ones_like(Pz)])
 
-    #angle between r_Fk and r_Pk (in radians) using dot product definition
-    cos_beta = np.dot(r_kF,r_kP)/(r_kFmag*r_kPmag)
-    cos_theta = np.dot(r_kP,np.array([0,0,1]))/(r_kPmag)
-    cos_alpha = np.dot(r_kF,np.array([0,0,1]))/(r_kFmag)
+    r_kFmag = st_d #np.linalg.norm(r_kF, axis=0) # magnitude of the vector from magnetron k to focus
+
+    
+    r_kP = r_kF + r_FP # vector from magnetron k to point P on the wafer 
+    r_kPmag = np.linalg.norm(r_kP, axis=0) # magnitude of the vector from magnetron k to point P on the wafer
+
+    #angle between r_kF and r_kP (in radians) using dot product definition
+    cos_beta = np.sum(r_kF * r_kP, axis=0)/(r_kFmag*r_kPmag)
+    
+    
+    unit_normal =  np.array([np.zeros_like(Px),
+                            np.zeros_like(Py),
+                            np.ones_like(Pz)])
+    
+    unit_normal = np.array([0, 0 , 1])[:, np.newaxis, np.newaxis]  # unit normal vector to the wafer surface (pointing up)
+    #angle between r_kP and the normal to the wafer (in radians) using dot product definition
+    cos_theta = np.sum(r_kP * unit_normal, axis=0)/(r_kPmag)
+    #angle between r_kF and the normal to the wafer (in radians) using dot product definition
+    cos_alpha = np.sum(r_kF * unit_normal, axis=0)/(r_kFmag)
         
     Phi_kP = Phi_kF * (r_kFmag/r_kPmag)**2 * cos_theta*(cos_beta**n)/cos_alpha  
     return Phi_kP
@@ -194,9 +211,9 @@ q = np.linspace(-edge,edge,n_divs)
 Px, Py = np.meshgrid(q,q)
 
 #note: rate used in rate_k is in atoms/[m2.s] - not [AA/s]! We convert using the atomic density
-A = rate_k(Px,Py,90,1*A_rho)  
+A = rate_k(Px,Py,90,2*A_rho)  
 B = rate_k(Px,Py,210,1*B_rho)
-C = rate_k(Px,Py,330,1*C_rho)
+C = rate_k(Px,Py,330,0*C_rho)
 
 #Calculate the compositions for each element
 A_comp = A/(A+B+C)
@@ -249,6 +266,7 @@ ax2 = plt.axes()
 level=np.linspace(int(np.min(thickness[thickness>0])),int(np.max(thickness)),num=25)
 CS=ax2.contour(thickness,level)
 ax2.clabel(CS, inline=1, fontsize=10)
+
 #plot the collated composition array as an RGB image
 ax2.set_xticks(np.arange(len(q)))
 ax2.set_yticks(np.arange(len(q)))
@@ -264,3 +282,4 @@ ax2.set_yticks(np.arange(len(q))-0.5, minor=True)
 ax2.grid(which="minor", color="w", linestyle='-', linewidth=1)
 circ=draw_circle(radius, divs, n_divs, ax2, color ='k--')
 plt.show
+# %%
